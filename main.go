@@ -2,8 +2,8 @@ package main
 
 import (
 	"net/http"
-	"github.com/letitbeat/analyzer/db"
-	"github.com/letitbeat/analyzer/graph"
+	"github.com/letitbeat/dp-analyzer/db"
+	"github.com/letitbeat/dp-analyzer/graph"
 	"bytes"
 	"encoding/json"
 	"fmt"
