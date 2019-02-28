@@ -1,7 +1,7 @@
 APP_NAME=dp-analyzer
 DOCKER_REPO=letitbeat
 VERSION=`cat version`
-.PHONY: all
+.PHONY: test build 
 .DEFAULT: help
 
 help: ## Show Help
@@ -22,13 +22,12 @@ test:  ## Launch tests
 dbuild: ## Build the docker image
 	docker build --force-rm -t $(APP_NAME) .
 
-release:
-	dtag login push
-push:
+release: tag login push
+push:  ## push the image to docker hub
 	@docker push $(DOCKER_REPO)/$(APP_NAME):$(VERSION)
 login:
-	@echo '$(DOCKER_PASSWORD)' | @docker login -u '$(DOCKER_USERNAME)' --password-stdin
-dtag:
+	@echo '$(DOCKER_PASSWORD)' | docker login -u '$(DOCKER_USERNAME)' --password-stdin
+tag:  ## Tag the image
 	@docker tag $(APP_NAME) $(DOCKER_REPO)/$(APP_NAME):$(VERSION)
 vers: ## Output the current version
 	@echo $(VERSION)
