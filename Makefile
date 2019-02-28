@@ -20,7 +20,7 @@ test:  ## Launch tests
 	go test -v ./...
 
 dbuild: ## Build the docker image
-	docker build --force-rm -t $(APP_NAME) .
+	@docker build --force-rm -t $(APP_NAME) .
 
 release: tag login push
 push:  ## push the image to docker hub
