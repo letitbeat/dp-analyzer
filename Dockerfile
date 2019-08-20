@@ -1,17 +1,23 @@
-FROM golang:1.9 as builder
+# build stage
+FROM golang:1.12 as builder
 
 RUN apt-get update && apt-get install graphviz -y
-RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
-WORKDIR /go/src/github.com/letitbeat/dp-analyzer
-COPY Gopkg.toml Gopkg.lock ./
-RUN dep ensure --vendor-only
+ENV GO111MODULE=on
 
-COPY . ./
-RUN go test -v ./...
+WORKDIR /app
 
-RUN go build -v main.go
+COPY go.mod .
+COPY go.sum .
 
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build main.go
+
+# final stage using from scratch to reduce image size
+FROM scratch
+COPY --from=builder /app/main /app/
 EXPOSE 5000
-
-ENTRYPOINT ["./main"]
+ENTRYPOINT ["/app/main"]
