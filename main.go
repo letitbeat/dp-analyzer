@@ -1,20 +1,21 @@
 package main
 
 import (
-	"net/http"
-	"github.com/letitbeat/dp-analyzer/db"
-	"github.com/letitbeat/dp-analyzer/graph"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
-	"encoding/base64"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/letitbeat/dp-analyzer/db"
+	"github.com/letitbeat/dp-analyzer/graph"
 )
 
 type FlowTree struct {
@@ -38,7 +39,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	packets, err := db.FindAll()
 
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 		http.Error(w, "Error getting packets from DB",
 			http.StatusInternalServerError)
 	}
@@ -59,7 +60,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		grouped[key] = append(grouped[key], f)
 	}
 
-	var final []FlowTree    // final list with merged nodes
+	var final []FlowTree // final list with merged nodes
 
 	for k := range grouped {
 
@@ -81,7 +82,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 				toMerge = append(toMerge, f)
 				merged = f
 			} else {
-				log.Printf("level: %v",  f.Level)
+				log.Printf("level: %v", f.Level)
 
 				final = append(final, f)
 			}
@@ -101,7 +102,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 				log.Fatalf("Error writing merged dot file: %v", err)
 			}
 
-			log.Printf("Merged DOT: %s", str)
+			//log.Printf("Merged DOT: %s", str)
 			merged.Nodes = str
 			dotGraph := generateGraph(fname)
 
@@ -123,7 +124,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(b.Bytes())
 }
 
-func mergeDots(files []string) []byte{
+func mergeDots(files []string) []byte {
 
 	args := []string{"-guv"}
 	args = append(args, files...)
@@ -173,7 +174,7 @@ type Topology struct {
 func SaveTopologyHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 
-		var topology Topology //map[string]interface{}
+		var topology Topology
 
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -217,7 +218,7 @@ func GetTopologyHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := writeStringToFile("topo.dot", topo.DOT)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
@@ -230,7 +231,7 @@ func GetTopologyHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := json.Marshal(topo)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
@@ -238,7 +239,7 @@ func GetTopologyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type Filter struct {
-	Expression string `json: "expression"`
+	Expression string `json:"expression"`
 }
 
 func GeneratePacketsHandler(w http.ResponseWriter, r *http.Request) {
@@ -270,9 +271,9 @@ func GeneratePacketsHandler(w http.ResponseWriter, r *http.Request) {
 
 		for i, h := range t.Hosts {
 
-			url := fmt.Sprintf("http://127.0.0.1:%d/generate", port + i)
+			url := fmt.Sprintf("http://127.0.0.1:%d/generate", port+i)
 
-			req, err := http.NewRequest("POST", url,  b )
+			req, err := http.NewRequest("POST", url, b)
 			req.Header.Set("Content-Type", "application/json; charset=utf-8")
 			client := &http.Client{}
 
@@ -299,13 +300,13 @@ func getTopology() Topology {
 	jsonData, err := ioutil.ReadFile("topology.json")
 
 	if err != nil {
-		log.Fatalf("Error reading topology.json file: %v", err)
+		log.Printf("Error reading topology.json file: %v", err)
 	}
 
 	err = json.Unmarshal(jsonData, &topology)
 
 	if err != nil {
-		log.Fatalf("Error converting topology to struct: %v", err)
+		log.Printf("Error converting topology: %s to struct,  error: %v", jsonData, err)
 	}
 
 	return topology
@@ -319,6 +320,9 @@ func generateFlowTrees(packets map[string][]db.PacketWrapper) []FlowTree {
 
 	var trees []FlowTree
 	for k := range packets {
+
+		start := time.Now()
+
 		log.Printf("Flow Tree for packets with the following payload/id: %s", k)
 
 		//TODO: Move this to DB
@@ -327,6 +331,10 @@ func generateFlowTrees(packets map[string][]db.PacketWrapper) []FlowTree {
 		})
 
 		firstMsg := packets[k][0]
+
+		lastMsg := packets[k][len(packets[k])-1]
+		log.Printf("LAST: %d - FIRST: %d = %d", lastMsg.CapturedAt, firstMsg.CapturedAt, (lastMsg.CapturedAt-firstMsg.CapturedAt)/1000000)
+
 		root := graph.Node{Name: getConnectedNode(firstMsg.Device), Label: getConnectedNode(firstMsg.Device)}
 		root.TimeOfChildren = 0
 		t := graph.NewTree(&root)
@@ -347,18 +355,16 @@ func generateFlowTrees(packets map[string][]db.PacketWrapper) []FlowTree {
 		level := 1
 
 		for _, p := range packets[k] {
-			log.Printf("%v %v", p.Device, p.CapturedAt)
-
-			log.Printf("Leafs level %d", t.LeafsLevel)
+			//log.Printf("%v %v", p.Device, p.CapturedAt)
 			level = t.LeafsLevel
 
-			step4:
+		step4:
 
 			n := t.FindNodeByLevel(strings.Split(p.Device, "-")[0], level)
 			if n != nil {
 				l := getConnectedNode(p.Device)
 
-				log.Printf("Node %s TOP: %d  TOC: %d", n, n.TimeOfParent, n.TimeOfChildren)
+				//log.Printf("Node %s TOP: %d  TOC: %d", n, n.TimeOfParent, n.TimeOfChildren)
 
 				if n.Parent != nil &&
 					n.Parent.Name == l &&
@@ -366,7 +372,7 @@ func generateFlowTrees(packets map[string][]db.PacketWrapper) []FlowTree {
 					n.Parent.TimeOfChildren < p.CapturedAt {
 
 					n.TimeOfParent = p.CapturedAt
-					log.Printf("Parent %v, %s", n.Parent.Name, l)
+					//log.Printf("Parent %v, %s", n.Parent.Name, l)
 				} else if n.Parent.Name != l &&
 					n.TimeOfParent != 0 &&
 					n.Parent.TimeOfChildren < p.CapturedAt {
@@ -377,7 +383,7 @@ func generateFlowTrees(packets map[string][]db.PacketWrapper) []FlowTree {
 					} else {
 						name = fmt.Sprintf("%s_prime", l)
 					}
-					log.Printf("Create a new node: %s to attach to: %s, d: %s", l, n.Name, p.Device)
+					//log.Printf("Create a new node: %s to attach to: %s, d: %s", l, n.Name, p.Device)
 
 					nn := graph.Node{Name: name, Label: l}
 					n.AddChild(&nn)
@@ -392,7 +398,7 @@ func generateFlowTrees(packets map[string][]db.PacketWrapper) []FlowTree {
 
 				d := strings.Split(p.Device, "-")[0]
 
-				log.Printf("Creating a node: %s, from d: %s to attach to: %v", d, p.Device, nC.Name)
+				//log.Printf("Creating a node: %s, from d: %s to attach to: %v", d, p.Device, nC.Name)
 
 				nn := graph.Node{Name: d, Label: d}
 				nn.TimeOfParent = p.CapturedAt
@@ -409,7 +415,7 @@ func generateFlowTrees(packets map[string][]db.PacketWrapper) []FlowTree {
 				}
 			}
 		}
-		t.String(t.Root, "-")
+		//t.String(t.Root, "-")
 		label := fmt.Sprintf("%s %s", ft.Type, ft.DstPort)
 		dotStr := string(t.ToDOT(k, label))
 
@@ -428,6 +434,8 @@ func generateFlowTrees(packets map[string][]db.PacketWrapper) []FlowTree {
 		ft.Level = t.LeafsLevel
 
 		trees = append(trees, ft)
+
+		log.Printf("Time elapsed to generate: %s", time.Now().Sub(start))
 	}
 
 	return trees
