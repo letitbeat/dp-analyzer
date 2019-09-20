@@ -17,7 +17,11 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build main.go
 
 # final stage using from scratch to reduce image size
-FROM scratch
+FROM alpine:3.10
+RUN apk add --update --no-cache \
+           graphviz \
+           ttf-freefont
 COPY --from=builder /app/main /app/
+COPY config.yml /app/
 EXPOSE 5000
 ENTRYPOINT ["/app/main"]

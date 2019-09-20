@@ -1,8 +1,8 @@
-package graph
+package tree
 
 import "testing"
 
-func TestFindNode(t *testing.T) {
+func TestFindNodeByLevel(t *testing.T) {
 
 	root := Node{Name: "root", Label: "root"}
 	nt := NewTree(&root)
