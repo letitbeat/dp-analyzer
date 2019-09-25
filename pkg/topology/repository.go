@@ -40,16 +40,6 @@ func (r *repo) FindAll() ([]Topology, error) {
 
 	collection := r.client.Database("analyzer").Collection("topology")
 
-	//filter := bson.D{{"_id", ID}}
-	// err := collection.FindOne(context.Background(), nil).Decode(&t)
-
-	// if err != nil {
-	// 	log.Printf("error fetching topology, %v", err)
-	// 	return t, err
-	// }
-
-	// return t, nil
-
 	ctx := context.Background()
 	cursor, err := collection.Find(ctx, bson.D{})
 	if err != nil {
