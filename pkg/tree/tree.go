@@ -1,34 +1,48 @@
-package graph
+package tree
 
 import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/awalterschulze/gographviz"
 )
 
 // Node a single node that composes the tree
 type Node struct {
-	Name           string
-	Label          string
-	Parent         *Node
-	Children       []*Node
-	TimeOfParent   int64
-	TimeOfChildren int64
+	Name          string
+	Label         string
+	Parent        *Node
+	Children      []*Node
+	TimeOfIngress *time.Time
+	TimeOfEgress  *time.Time
 
 	lock  sync.RWMutex
-	level int
+	Level int
 }
 
+// NewNode creates a new tree Node
+func NewNode(name, label string) *Node {
+	return &Node{
+		Name:          name,
+		Label:         label,
+		TimeOfIngress: &time.Time{},
+		TimeOfEgress:  &time.Time{},
+	}
+}
+
+// String returns a string representation of this tree
 func (n *Node) String() string {
 	return fmt.Sprintf("%v", n.Label)
 }
 
+// SetParent sets the parent node
 func (n *Node) SetParent(p *Node) {
 	n.Parent = p
 }
 
+// AddChild add a new child to the node
 func (n *Node) AddChild(c *Node) {
 	n.lock.Lock()
 	c.SetParent(n)
@@ -36,6 +50,7 @@ func (n *Node) AddChild(c *Node) {
 	n.lock.Unlock()
 }
 
+// Tree represents a rooted tree objected
 type Tree struct {
 	Root       *Node
 	LeafsLevel int
@@ -48,19 +63,17 @@ type Tree struct {
 func NewTree(root *Node) *Tree {
 	t := new(Tree)
 	t.Root = root
-	t.Root.Name = root.Name  ////// TODO: Check why this
-	t.Root.Label = root.Name /////
-	t.Root.Children = []*Node{}
-	t.Root.level = 1
+	t.Root.Level = 1
 	t.LeafsLevel = 1
 	t.nodesByLevel = make(map[int][]*Node)
 	t.nodesByLevel[1] = append(t.nodesByLevel[1], t.Root)
 	return t
 }
 
+// AddNode adds a new Node to the tree
 func (t *Tree) AddNode(n *Node) {
-	l := n.Parent.level + 1
-	n.level = l
+	l := n.Parent.Level + 1
+	n.Level = l
 	t.nodesByLevel[l] = append(t.nodesByLevel[l], n)
 
 	if l > t.LeafsLevel {
@@ -68,6 +81,7 @@ func (t *Tree) AddNode(n *Node) {
 	}
 }
 
+// FindNodeByLevel finds a new at a given level of the tree
 func (t *Tree) FindNodeByLevel(label string, level int) *Node {
 
 	for _, n := range t.nodesByLevel[level] {
@@ -78,6 +92,7 @@ func (t *Tree) FindNodeByLevel(label string, level int) *Node {
 	return nil
 }
 
+// String returns a string representation of the tree
 func (t *Tree) String(n *Node, s string) {
 	for _, c := range n.Children {
 		t.String(c, s+s)
@@ -172,13 +187,14 @@ func findNode(n *Node, label string) *Node {
 
 	if n.Label == label {
 		return n
-	} else {
-		for _, c := range n.Children {
-			r := findNode(c, label)
-			if r != nil {
-				return r
-			}
+	}
+
+	for _, c := range n.Children {
+		r := findNode(c, label)
+		if r != nil {
+			return r
 		}
 	}
+
 	return nil
 }
