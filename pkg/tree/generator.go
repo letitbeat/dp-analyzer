@@ -90,13 +90,13 @@ func (g *Generator) Generate(packets map[string][]packets.Packet) ([]FlowTree, e
 
 				if n.Parent != nil &&
 					n.Parent.Name == connected &&
-					n.TimeOfParent.IsZero() &&
-					n.Parent.TimeOfChild.Before(*p.CapturedAt) {
+					n.TimeOfIngress.IsZero() &&
+					n.Parent.TimeOfEgress.Before(*p.CapturedAt) {
 
-					n.TimeOfParent = p.CapturedAt
+					n.TimeOfIngress = p.CapturedAt
 				} else if n.Parent != nil &&
-					!n.TimeOfParent.IsZero() &&
-					n.TimeOfParent.Before(*p.CapturedAt) {
+					!n.TimeOfIngress.IsZero() &&
+					n.TimeOfIngress.Before(*p.CapturedAt) {
 
 					var name string
 					if d := t.FindNode(connected); d == nil {
@@ -107,7 +107,7 @@ func (g *Generator) Generate(packets map[string][]packets.Packet) ([]FlowTree, e
 					}
 					log.Printf("Creating a node name: %s, label: %s, to attach to: %s", name, connected, n.Name)
 					nn := NewNode(name, connected)
-					nn.TimeOfChild = p.CapturedAt
+					nn.TimeOfEgress = p.CapturedAt
 					n.AddChild(nn)
 					t.AddNode(nn)
 				} else {
@@ -134,7 +134,7 @@ func (g *Generator) Generate(packets map[string][]packets.Packet) ([]FlowTree, e
 				}
 
 				c := NewNode(name, s)
-				c.TimeOfParent = p.CapturedAt
+				c.TimeOfIngress = p.CapturedAt
 				n.AddChild(c)
 				t.AddNode(c)
 			} else {

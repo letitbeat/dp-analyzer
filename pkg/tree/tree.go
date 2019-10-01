@@ -11,12 +11,12 @@ import (
 
 // Node a single node that composes the tree
 type Node struct {
-	Name         string
-	Label        string
-	Parent       *Node
-	Children     []*Node
-	TimeOfParent *time.Time
-	TimeOfChild  *time.Time
+	Name          string
+	Label         string
+	Parent        *Node
+	Children      []*Node
+	TimeOfIngress *time.Time
+	TimeOfEgress  *time.Time
 
 	lock  sync.RWMutex
 	Level int
@@ -25,10 +25,10 @@ type Node struct {
 // NewNode creates a new tree Node
 func NewNode(name, label string) *Node {
 	return &Node{
-		Name:         name,
-		Label:        label,
-		TimeOfParent: &time.Time{},
-		TimeOfChild:  &time.Time{},
+		Name:          name,
+		Label:         label,
+		TimeOfIngress: &time.Time{},
+		TimeOfEgress:  &time.Time{},
 	}
 }
 
