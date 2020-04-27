@@ -61,6 +61,12 @@ func (r *repo) FindAll() ([]Packet, error) {
 
 func (r *repo) Store(p Packet) error {
 
+	if p.Payload == "" || len(p.Payload) == 0 {
+		return nil
+	}
+	p.CapturedAtNano = p.CapturedAt.UnixNano()
+	log.Printf("Received timestamp: %d, %d", p.CapturedAt.Unix(), p.CapturedAt.UnixNano())
+
 	collection := r.client.Database("analyzer").Collection("packets")
 
 	p.ID = primitive.NewObjectID()

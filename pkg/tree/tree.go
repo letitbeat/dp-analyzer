@@ -57,6 +57,8 @@ type Tree struct {
 
 	lock         sync.RWMutex
 	nodesByLevel map[int][]*Node
+	edges        []*gographviz.Edge
+	nodes        []*gographviz.Node
 }
 
 // NewTree returns a new instance of Tree
@@ -95,8 +97,28 @@ func (t *Tree) FindNodeByLevel(label string, level int) *Node {
 // String returns a string representation of the tree
 func (t *Tree) String(n *Node, s string) {
 	for _, c := range n.Children {
+		log.Printf("%s %s", s, c.Label)
 		t.String(c, s+s)
 	}
+}
+
+// DFS returns an array of parent and children nodes
+// after traversing the tree using depth-first search algorithm
+func (t *Tree) DFS(n *Node) [][]*Node {
+
+	var r [][]*Node
+	if len(n.Children) > 0 {
+		for _, c := range n.Children {
+			childrenList := t.DFS(c)
+			for _, v := range childrenList {
+				v = append(v, n) // append the current node the final list
+				r = append(r, v)
+			}
+		}
+	} else {
+		r = append(r, []*Node{n})
+	}
+	return r
 }
 
 // ToDOT returns a string of the current tree in
@@ -133,6 +155,10 @@ func (t *Tree) ToDOT(names, label string) string {
 		toDOT(name, g, t.Root, c)
 	}
 
+	t.edges = g.Edges.Sorted()
+	t.nodes = g.Nodes.Sorted()
+	log.Printf("EDGES: %v", g.Edges.Sorted())
+	//	log.Printf("Nodes: %s", g.Nodes.Sorted())
 	return g.String()
 }
 
@@ -160,6 +186,51 @@ func toDOT(name string, g *gographviz.Graph, p *Node, n *Node) {
 	}
 }
 
+// Edge holds source and destiny data of a node
+type Edge struct {
+	Src string
+	Dst string
+}
+
+// Edges returns an array of edges for all the nodes in
+// tree
+func (t *Tree) Edges() [][]Edge {
+
+	var edges [][]Edge
+
+	paths := t.DFS(t.Root)
+	for _, v := range paths {
+		var path []Edge
+		for i := len(v) - 1; i > 0; i-- {
+			path = append(path, Edge{v[i].Label, v[i-1].Label})
+		}
+		edges = append(edges, path)
+	}
+	return edges
+}
+
+// EdgesFromString return an array of Edges taking as input
+// an string in gographiz format
+func EdgesFromString(s string) []Edge {
+	var edges []Edge
+
+	g, _ := gographviz.Read([]byte(s))
+	for _, e := range g.Edges.Sorted() {
+		edges = append(edges, Edge{e.Src, e.Dst})
+	}
+	return edges
+}
+
+func (t *Tree) nodeLabel(name string) string {
+	for _, n := range t.nodes {
+		if n.Name == name {
+			return n.Attrs["label"]
+		}
+	}
+	return ""
+}
+
+// PrintNodesAtLevel prints all nodes by given level in the tree
 func PrintNodesAtLevel(n *Node, currentLevel int, level int) {
 
 	if n == nil {
@@ -176,6 +247,7 @@ func PrintNodesAtLevel(n *Node, currentLevel int, level int) {
 	}
 }
 
+// FindNode returns the first node that matches its label
 func (t *Tree) FindNode(label string) *Node {
 	return findNode(t.Root, label)
 }

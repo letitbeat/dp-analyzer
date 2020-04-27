@@ -5,9 +5,11 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/letitbeat/dp-analyzer/pkg/db/mongo"
 	"github.com/letitbeat/dp-analyzer/pkg/packets"
+	"github.com/letitbeat/dp-analyzer/pkg/smt"
 	"github.com/letitbeat/dp-analyzer/pkg/topology"
 	"github.com/letitbeat/dp-analyzer/pkg/tree"
 	"github.com/spf13/viper"
@@ -34,15 +36,20 @@ func main() {
 	packetsRepo := packets.NewRepository(client)
 	packetsHandler := packets.NewHandler(packetsRepo)
 
-	treeHandler := tree.NewHandler(packetsRepo, topoRepo)
+	smtRepo := smt.NewRepository(client)
+	smtHandler := smt.NewHandler(smtRepo)
+
+	treeHandler := tree.NewHandler(packetsRepo, topoRepo, smtRepo)
 
 	router := mux.NewRouter()
 
 	router.HandleFunc("/topology", topoHandler.Set).Methods(http.MethodPost)
 	router.HandleFunc("/topology", topoHandler.Get).Methods(http.MethodGet)
+	router.HandleFunc("/smt", smtHandler.Save).Methods(http.MethodPost)
+	router.HandleFunc("/smt", smtHandler.Get).Methods(http.MethodGet)
 	router.HandleFunc("/save", packetsHandler.Save).Methods(http.MethodPost)
 	router.HandleFunc("/", treeHandler.GetAll).Methods(http.MethodGet)
 
 	log.Printf("listening on port %d", 5000)
-	log.Fatal(http.ListenAndServe(":5000", router))
+	log.Fatal(http.ListenAndServe(":5000", handlers.CORS()(router)))
 }

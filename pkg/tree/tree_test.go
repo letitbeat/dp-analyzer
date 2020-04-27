@@ -44,3 +44,37 @@ func TestFindNodeByLevel(t *testing.T) {
 	}
 
 }
+
+func TestGetEdges(t *testing.T) {
+
+	root := Node{Name: "root", Label: "root"}
+	nt := NewTree(&root)
+	c1 := &Node{Name: "child1", Label: "child1"}
+	c2 := &Node{Name: "child2", Label: "child2"}
+	c3 := &Node{Name: "child3", Label: "child3"}
+	c4 := &Node{Name: "child4", Label: "child4"}
+	c5 := &Node{Name: "child5", Label: "child5"}
+
+	root.AddChild(c1)
+	c1.AddChild(c2)
+
+	c2.AddChild(c3)
+	c3.AddChild(c4)
+	c3.AddChild(c5)
+
+	nt.AddNode(c1)
+	nt.AddNode(c2)
+	nt.AddNode(c3)
+	nt.AddNode(c4)
+	nt.AddNode(c5)
+
+	nt.String(&root, "-")
+	r := nt.DFS(&root)
+	t.Logf("DFS %v", r)
+
+	for _, v := range r {
+		for i := len(v) - 1; i > 0; i-- {
+			t.Logf("Edge: %s -- %s", v[i].Label, v[i-1].Label)
+		}
+	}
+}
