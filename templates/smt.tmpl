@@ -1,0 +1,47 @@
+(declare-datatypes () ((Edge (mk-pair (first String) (second String)))))
+{{ with .Edges -}}
+    (declare-const paths (Array Int (Array Int Edge)))
+    (define-fun paths_size () Int {{len .}})
+    (declare-const paths_length (Array Int Int))
+    {{ range $i, $ee := . -}}
+        {{ range $j, $e := $ee -}}
+            (define-fun e{{ $i }}_{{ inc $j }} () Edge (mk-pair "{{ .Src }}" "{{ .Dst }}"))
+        {{ end }}
+        (define-fun p{{$i}}_size () Int {{ len $ee }})
+        (declare-const p{{ $i }} (Array Int Edge))
+        {{ range $j, $e := $ee -}}
+            (assert (= (store p{{ $i }} {{ inc $j }} e{{ $i }}_{{ inc $j }}) p{{ $i }}))
+        {{ end }}
+        (assert (=(store paths {{ $i }} p{{ $i }}) paths))
+        (assert (= (store paths_length {{ $i }} p{{ $i }}_size) paths_length))
+    {{ end }}
+{{ end }}
+(declare-const hosts (Array Int String))
+(declare-const switches (Array Int String))
+{{ with .Hosts -}}
+    {{ range $i, $h := . -}}
+        (assert (= (store hosts {{ inc $i }} "{{ $h }}") hosts))
+    {{ end -}}
+    (define-fun hosts_size () Int {{ len . }})
+{{ end }}
+{{ with .Switches -}}
+    {{ range $i, $s := . -}}
+        (assert (= (store switches {{ inc $i }} "{{ $s }}") switches))
+    {{ end -}}
+    (define-fun switches_size () Int {{ len . }})
+{{ end }}
+{{ with .DataPlane -}}
+    {{ range $i, $e := . -}}
+        (define-fun dpe{{ inc $i }} () Edge (mk-pair "{{ .Src }}" "{{ .Dst }}"))
+        (define-fun dpe{{ inc $i }}_prime () Edge (mk-pair "{{ .Dst }}" "{{ .Src }}"))
+    {{ end }}
+    (declare-const dp (Array Int Edge))
+    {{ $k := 0 }}
+    {{ range $i, $e := . -}}
+        {{ $k = inc $k -}}
+        (assert (= (store dp {{ $k }} dpe{{ inc $i }}) dp))
+        {{ $k = inc $k -}}
+        (assert (= (store dp {{ $k }} dpe{{ inc $i }}_prime) dp))
+    {{ end }}
+    (define-fun dp_size () Int {{ $k }})
+{{ end }}

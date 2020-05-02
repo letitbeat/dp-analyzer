@@ -20,8 +20,20 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build main.go
 FROM alpine:3.10
 RUN apk add --update --no-cache \
            graphviz \
-           ttf-freefont
+           ttf-freefont \
+           python \
+           py3-z3 \
+           alpine-sdk \
+            #python \
+            #python-dev \
+            py-pip \
+            #&& pip install virtualenv \
+            && pip install -v z3-solver
+
 COPY --from=builder /app/main /app/
 COPY config.yml /app/
+COPY templates /app/templates
+COPY scripts /app/scripts
+
 EXPOSE 5000
 ENTRYPOINT ["/app/main"]

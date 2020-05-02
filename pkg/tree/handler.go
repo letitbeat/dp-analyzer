@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/letitbeat/dp-analyzer/pkg/packets"
+	"github.com/letitbeat/dp-analyzer/pkg/smt"
 	"github.com/letitbeat/dp-analyzer/pkg/topology"
 )
 
@@ -15,18 +16,17 @@ import (
 type Handler struct {
 	packetsRepo packets.Repository
 	topoRepo    topology.Repository
+	smtRepo     smt.Repository
 }
 
 // NewHandler returns a new FlowTree Handler
-func NewHandler(repo packets.Repository, topoRepo topology.Repository) *Handler {
-	return &Handler{repo, topoRepo}
+func NewHandler(repo packets.Repository, topoRepo topology.Repository, smtRepo smt.Repository) *Handler {
+	return &Handler{repo, topoRepo, smtRepo}
 }
 
 // GetAll handles HTTP GET requests and returns a JSON representation of
 // the generated FlowTrees
 func (h *Handler) GetAll(response http.ResponseWriter, request *http.Request) {
-
-	enableCors(&response)
 
 	pks, err := h.packetsRepo.FindAll()
 	if err != nil {
@@ -43,7 +43,12 @@ func (h *Handler) GetAll(response http.ResponseWriter, request *http.Request) {
 		writeErr(response, err)
 	}
 
-	g := NewGenerator(topology[0])
+	props, err := h.smtRepo.FindAll()
+	if err != nil {
+		writeErr(response, err)
+	}
+
+	g := NewGenerator(topology[0], props)
 
 	trees, err := g.Generate(packetsMap)
 	if err != nil {
@@ -58,7 +63,7 @@ func (h *Handler) GetAll(response http.ResponseWriter, request *http.Request) {
 		grouped[key] = append(grouped[key], t)
 	}
 
-	final, err := Merge(grouped)
+	final, err := g.Merge(grouped)
 	if err != nil {
 		writeErr(response, err)
 	}
@@ -74,8 +79,4 @@ func writeErr(response http.ResponseWriter, err error) {
 	log.Println("error ", msg)
 	response.WriteHeader(http.StatusInternalServerError)
 	response.Write([]byte(msg))
-}
-
-func enableCors(w *http.ResponseWriter) {
-	(*w).Header().Set("Access-Control-Allow-Origin", "*")
 }
